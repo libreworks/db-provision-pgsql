@@ -19,10 +19,18 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
       - name: Install dependencies
         run: yarn install --check-files
       - name: build
         run: npx projen build
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: coverage
       - name: Find mutations
         id: self_mutation
         run: |-

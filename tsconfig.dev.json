@@ -8,9 +8,10 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "lib": [
-      "es2019"
+      "DOM",
+      "ES2022"
     ],
-    "module": "CommonJS",
+    "module": "node16",
     "noEmitOnError": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -23,7 +24,8 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
     "stripInternal": true,
-    "target": "ES2019"
+    "target": "es2022",
+    "moduleResolution": "node16"
   },
   "include": [
     ".projenrc.js",
