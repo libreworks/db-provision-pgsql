@@ -231,6 +231,86 @@ export class Securable extends Named {
 }
 
 /**
+ * A modification to the default privileges used when objects are created.
+ */
+export class DefaultPrivileges implements Executable {
+  readonly #privileges: Privileges;
+  readonly #creator?: Role;
+  readonly #schema?: Schema;
+
+  /**
+   * Creates a new AlterDefaultPrivileges.
+   *
+   * @param privileges - The privileges to define
+   * @param creator - Optional, the role doing the creating
+   * @param schema - Optional, The schema in which the privileges apply
+   */
+  public constructor(privileges: Privileges, creator?: Role, schema?: Schema) {
+    this.#privileges = privileges;
+    this.#creator = creator;
+    this.#schema = schema;
+  }
+
+  /**
+   * @returns The default privileges applied
+   */
+  public get privileges(): Privileges {
+    return this.#privileges;
+  }
+
+  /**
+   * @returns The role whose creations use the default privileges
+   */
+  public get creator(): Role | undefined {
+    return this.#creator;
+  }
+
+  /**
+   * @returns The schema in which the privileges apply
+   */
+  public get schema(): Schema | undefined {
+    return this.#schema;
+  }
+
+  /**
+   * Constrains these defaults to a specific schema.
+   *
+   * @param schema - The schema in which the privileges apply
+   * @returns A copy of this object, constrained to the given schema
+   */
+  public inSchema(schema: Schema): DefaultPrivileges {
+    return new DefaultPrivileges(this.#privileges, this.#creator, schema);
+  }
+
+  /**
+   * Constrains these defaults to a specific creator.
+   *
+   * @param creator - The role whose creations use the default privileges
+   * @returns A copy of this object, constrained to the given creator
+   */
+  public forCreator(creator: Role): DefaultPrivileges {
+    return new DefaultPrivileges(this.#privileges, creator, this.#schema);
+  }
+
+  public toSql(): string {
+    const statement = ["ALTER DEFAULT PRIVILEGES"];
+
+    if (this.#creator instanceof Login) {
+      statement.push("FOR USER", this.#creator.name);
+    } else if (this.#creator instanceof Role) {
+      statement.push("FOR ROLE", this.#creator.name);
+    }
+
+    if (this.#schema) {
+      statement.push("IN", this.#schema.grantName);
+    }
+
+    statement.push(this.#privileges.toSql());
+    return statement.join(" ");
+  }
+}
+
+/**
  * A PostgreSQL database.
  */
 export class Catalog extends Securable implements Executable {
@@ -333,6 +413,58 @@ export class Schema extends Securable implements Executable {
    */
   public allRoutines(): Securable {
     return new Securable("ALL ROUTINES IN", this.grantName);
+  }
+
+  /**
+   * Changes the owner of this schema to someone else.
+   *
+   * @param to - The new owner
+   * @returns An executable statement
+   */
+  public changeOwner(to: Role): Executable {
+    return { toSql: () => `ALTER SCHEMA ${this.name} OWNER TO ${to.name}` };
+  }
+
+  /**
+   * Sets the default privileges for newly created tables in this schema.
+   *
+   * @param grantee - The role to receive the privileges
+   * @param privileges - The privileges to grant
+   */
+  public setDefaultTablePrivileges(
+    grantee: Role,
+    ...privileges: string[]
+  ): DefaultPrivileges {
+    const defaultPrivs = new Privileges(grantee, "TABLES", ...privileges);
+    return new DefaultPrivileges(defaultPrivs, undefined, this);
+  }
+
+  /**
+   * Sets the default privileges for newly created sequences in this schema.
+   *
+   * @param grantee - The role to receive the privileges
+   * @param privileges - The privileges to grant
+   */
+  public setDefaultSequencePrivileges(
+    grantee: Role,
+    ...privileges: string[]
+  ): DefaultPrivileges {
+    const defaultPrivs = new Privileges(grantee, "SEQUENCES", ...privileges);
+    return new DefaultPrivileges(defaultPrivs, undefined, this);
+  }
+
+  /**
+   * Sets the default privileges for newly created sequences in this schema.
+   *
+   * @param grantee - The role to receive the privileges
+   * @param privileges - The privileges to grant
+   */
+  public setDefaultRoutinePrivileges(
+    grantee: Role,
+    ...privileges: string[]
+  ): DefaultPrivileges {
+    const defaultPrivs = new Privileges(grantee, "ROUTINES", ...privileges);
+    return new DefaultPrivileges(defaultPrivs, undefined, this);
   }
 
   public toSql(): string {

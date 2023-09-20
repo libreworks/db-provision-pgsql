@@ -8,6 +8,7 @@ import {
   Securable,
   Catalog,
   Schema,
+  DefaultPrivileges,
 } from "../src/model.js";
 
 class NamedImpl extends Named {}
@@ -261,6 +262,19 @@ describe("model", () => {
       });
     });
 
+    describe("#changeOwner", () => {
+      test("works as expected", () => {
+        const catalog = new Catalog("whatever");
+        const name = "my_user";
+        const owner = new Role("owner");
+        const obj = new Schema(catalog, name);
+        const actual = obj.changeOwner(owner);
+        expect(actual.toSql()).toBe(
+          `ALTER SCHEMA ${name} OWNER TO ${owner.name}`,
+        );
+      });
+    });
+
     describe("#grant", () => {
       test("works as expected", () => {
         const name = "foobar";
@@ -280,6 +294,54 @@ describe("model", () => {
         const actual = obj.allSequences();
         expect(actual).toBeInstanceOf(Securable);
         expect(actual.grantName).toBe(`ALL SEQUENCES IN ${obj.grantName}`);
+      });
+    });
+
+    describe("#setDefaultTablePrivileges", () => {
+      test("works as expected", () => {
+        const catalog = new Catalog("whatever");
+        const name = "my_schema";
+        const obj = new Schema(catalog, name);
+        const grantee = new Role("grantee");
+        const privs = ["USAGE", "CONNECT"];
+        const actual = obj.setDefaultTablePrivileges(grantee, ...privs);
+        expect(actual).toBeInstanceOf(DefaultPrivileges);
+        expect(actual.creator).toBeUndefined();
+        expect(actual.schema).toBe(obj);
+        expect(actual.privileges.target).toBe("TABLES");
+        expect(actual.privileges.privileges).toStrictEqual(privs);
+      });
+    });
+
+    describe("#setDefaultSequencePrivileges", () => {
+      test("works as expected", () => {
+        const catalog = new Catalog("whatever");
+        const name = "my_schema";
+        const obj = new Schema(catalog, name);
+        const grantee = new Role("grantee");
+        const privs = ["SELECT", "UPDATE"];
+        const actual = obj.setDefaultSequencePrivileges(grantee, ...privs);
+        expect(actual).toBeInstanceOf(DefaultPrivileges);
+        expect(actual.creator).toBeUndefined();
+        expect(actual.schema).toBe(obj);
+        expect(actual.privileges.target).toBe("SEQUENCES");
+        expect(actual.privileges.privileges).toStrictEqual(privs);
+      });
+    });
+
+    describe("#setDefaultRoutinePrivileges", () => {
+      test("works as expected", () => {
+        const catalog = new Catalog("whatever");
+        const name = "my_schema";
+        const obj = new Schema(catalog, name);
+        const grantee = new Role("grantee");
+        const privs = ["EXECUTE"];
+        const actual = obj.setDefaultRoutinePrivileges(grantee, ...privs);
+        expect(actual).toBeInstanceOf(DefaultPrivileges);
+        expect(actual.creator).toBeUndefined();
+        expect(actual.schema).toBe(obj);
+        expect(actual.privileges.target).toBe("ROUTINES");
+        expect(actual.privileges.privileges).toStrictEqual(privs);
       });
     });
 
@@ -322,6 +384,98 @@ describe("model", () => {
         const sql = obj.toSql();
         expect(sql).toBe(
           `CREATE SCHEMA IF NOT EXISTS ${name} AUTHORIZATION ${owner.name}`,
+        );
+      });
+    });
+  });
+
+  describe("DefaultPrivileges", () => {
+    describe("#constructor", () => {
+      test("works as expected", () => {
+        const privs = ["SELECT", "INSERT"];
+        const grantee = new Role("foobar");
+        const privileges = new Privileges(grantee, "TABLES", ...privs);
+        const catalog = new Catalog("whatever");
+        const schema = new Schema(catalog, "my_schema");
+        const creator = new Role("barfoo");
+        const obj = new DefaultPrivileges(privileges, creator, schema);
+        expect(obj.creator).toBe(creator);
+        expect(obj.schema).toBe(schema);
+        expect(obj.privileges).toStrictEqual(privileges);
+      });
+    });
+
+    describe("#forCreator", () => {
+      test("works as expected", () => {
+        const privs = ["SELECT", "INSERT"];
+        const grantee = new Role("foobar");
+        const privileges = new Privileges(grantee, "TABLES", ...privs);
+        const catalog = new Catalog("whatever");
+        const schema = new Schema(catalog, "my_schema");
+        const obj = new DefaultPrivileges(privileges, undefined, schema);
+        expect(obj.creator).toBeUndefined();
+        const creator = new Role("barfoo");
+        const actual = obj.forCreator(creator);
+        expect(actual.schema).toBe(schema);
+        expect(actual.privileges).toStrictEqual(obj.privileges);
+        expect(actual.creator).toBe(creator);
+      });
+    });
+
+    describe("#inSchema", () => {
+      test("works as expected", () => {
+        const privs = ["SELECT", "INSERT"];
+        const grantee = new Role("foobar");
+        const privileges = new Privileges(grantee, "TABLES", ...privs);
+        const creator = new Role("barfoo");
+        const obj = new DefaultPrivileges(privileges, creator);
+        expect(obj.schema).toBeUndefined();
+        const catalog = new Catalog("whatever");
+        const schema = new Schema(catalog, "my_schema");
+        const actual = obj.inSchema(schema);
+        expect(actual.schema).toBe(schema);
+        expect(actual.privileges).toStrictEqual(obj.privileges);
+        expect(actual.creator).toBe(creator);
+      });
+    });
+
+    describe("#toSql", () => {
+      test("produces correct SQL with defaults", () => {
+        const privs = ["SELECT", "INSERT"];
+        const grantee = new Role("foobar");
+        const privileges = new Privileges(grantee, "TABLES", ...privs);
+        const obj = new DefaultPrivileges(privileges);
+        const sql = obj.toSql();
+        expect(sql).toBe(
+          `ALTER DEFAULT PRIVILEGES GRANT SELECT, INSERT ON TABLES TO ${grantee.name}`,
+        );
+      });
+
+      test("produces correct SQL with all arguments and role", () => {
+        const privs = ["SELECT", "INSERT"];
+        const grantee = new Role("foobar");
+        const privileges = new Privileges(grantee, "TABLES", ...privs);
+        const catalog = new Catalog("whatever");
+        const schema = new Schema(catalog, "my_schema");
+        const creator = new Role("barfoo");
+        const obj = new DefaultPrivileges(privileges, creator, schema);
+        const sql = obj.toSql();
+        expect(sql).toBe(
+          `ALTER DEFAULT PRIVILEGES FOR ROLE ${creator.name} IN ${schema.grantName} GRANT SELECT, INSERT ON TABLES TO ${grantee.name}`,
+        );
+      });
+
+      test("produces correct SQL with all arguments", () => {
+        const privs = ["SELECT", "INSERT"];
+        const grantee = new Role("foobar");
+        const privileges = new Privileges(grantee, "TABLES", ...privs);
+        const catalog2 = new Catalog("whatever");
+        const schema2 = new Schema(catalog2, "my_schema");
+        const creator = new Login("barfoo", "hunter2");
+        const obj = new DefaultPrivileges(privileges, creator, schema2);
+        const sql = obj.toSql();
+        expect(sql).toBe(
+          `ALTER DEFAULT PRIVILEGES FOR USER ${creator.name} IN ${schema2.grantName} GRANT SELECT, INSERT ON TABLES TO ${grantee.name}`,
         );
       });
     });
