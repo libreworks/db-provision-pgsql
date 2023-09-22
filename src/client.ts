@@ -1,19 +1,9 @@
-import pg, { ClientConfig } from "pg";
+import pg from "pg";
 
 /**
  * A connection to the "postgres" database on a PostegreSQL server.
  */
 export class ServerClient {
-  /**
-   * Creates a new ServerClient and pg.Client.
-   *
-   * @param config - Optional, the configuration for the pg.Client instance
-   * @returns The new ServerClient instance
-   */
-  public create(config?: ClientConfig) {
-    return new ServerClient(new pg.Client({ ...config, database: "postgres" }));
-  }
-
   readonly #client: pg.Client;
 
   /**
@@ -22,6 +12,9 @@ export class ServerClient {
    * @param client - The pg Client instance
    */
   public constructor(client: pg.Client) {
+    if (client.database !== "postgres") {
+      throw new Error("The Client must connect to the postgres database");
+    }
     this.#client = client;
   }
 
@@ -49,7 +42,7 @@ export class ServerClient {
    * @param username - The username to test
    * @returns A Promise that resolves to true if the user exists
    */
-  public async userExists(username: string): Promise<boolean> {
+  public async roleExists(username: string): Promise<boolean> {
     const result = await this.#client.query<number[]>({
       text: "SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE rolname = $1",
       values: [username],
