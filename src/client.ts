@@ -1,20 +1,28 @@
-import { Client, ClientConfig } from "pg";
+import pg, { ClientConfig } from "pg";
+
 /**
  * A connection to the "postgres" database on a PostegreSQL server.
  */
 export class ServerClient {
-  readonly #client: Client;
+  /**
+   * Creates a new ServerClient and pg.Client.
+   *
+   * @param config - Optional, the configuration for the pg.Client instance
+   * @returns The new ServerClient instance
+   */
+  public create(config?: ClientConfig) {
+    return new ServerClient(new pg.Client({ ...config, database: "postgres" }));
+  }
+
+  readonly #client: pg.Client;
 
   /**
    * Creates a new ServerClient.
    *
-   * @param config - Optional, the configuration for this client.
+   * @param client - The pg Client instance
    */
-  public constructor(config?: ClientConfig) {
-    this.#client = new Client({
-      ...config,
-      database: "postgres",
-    });
+  public constructor(client: pg.Client) {
+    this.#client = client;
   }
 
   /**

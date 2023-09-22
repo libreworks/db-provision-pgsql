@@ -1,3 +1,5 @@
+import { escapeIdentifier, escapeLiteral } from "./escape.js";
+
 /**
  * An object capable of producing a SQL statement.
  */
@@ -50,7 +52,7 @@ export class Role extends Named {
   }
 
   public toSql(): string {
-    return `CREATE ROLE ${this.name}`;
+    return `CREATE ROLE ${escapeIdentifier(this.name)}`;
   }
 }
 
@@ -91,7 +93,8 @@ export class Grant implements Executable {
   }
 
   public toSql(): string {
-    return `GRANT ${this.entitlement} TO ${this.#grantee.name}`;
+    const grantee = escapeIdentifier(this.#grantee.name);
+    return `GRANT ${this.entitlement} TO ${grantee}`;
   }
 }
 
@@ -108,7 +111,7 @@ export class Membership extends Grant {
    * @param member - The grantee
    */
   public constructor(group: Role, member: Role) {
-    super(member, group.name);
+    super(member, escapeIdentifier(group.name));
     this.#group = group;
   }
 
@@ -153,7 +156,9 @@ export class Login extends Role {
   }
 
   public toSql(): string {
-    return `CREATE USER ${this.name} WITH PASSWORD '${this.#password}'`;
+    const username = escapeIdentifier(this.name);
+    const password = escapeLiteral(this.#password);
+    return `CREATE USER ${username} WITH PASSWORD ${password}`;
   }
 }
 
@@ -215,7 +220,7 @@ export class Securable extends Named {
    * @returns This object name for use in a GRANT statement
    */
   public get grantName(): string {
-    return `${this.#qualifier} ${this.name}`;
+    return `${this.#qualifier} ${escapeIdentifier(this.name)}`;
   }
 
   /**
@@ -296,9 +301,9 @@ export class DefaultPrivileges implements Executable {
     const statement = ["ALTER DEFAULT PRIVILEGES"];
 
     if (this.#creator instanceof Login) {
-      statement.push("FOR USER", this.#creator.name);
+      statement.push("FOR USER", escapeIdentifier(this.#creator.name));
     } else if (this.#creator instanceof Role) {
-      statement.push("FOR ROLE", this.#creator.name);
+      statement.push("FOR ROLE", escapeIdentifier(this.#creator.name));
     }
 
     if (this.#schema) {
@@ -352,9 +357,12 @@ export class Catalog extends Securable implements Executable {
   }
 
   public toSql(): string {
-    let sql = `CREATE DATABASE ${this.name} ENCODING '${this.#encoding}'`;
+    const name = escapeIdentifier(this.name);
+    const encoding = escapeLiteral(this.#encoding);
+    let sql = `CREATE DATABASE ${name} ENCODING ${encoding}`;
     if (this.#locale) {
-      sql += ` LC_COLLATE '${this.#locale}' LC_CTYPE '${this.#locale}'`;
+      const locale = escapeLiteral(this.#locale);
+      sql += ` LC_COLLATE ${locale} LC_CTYPE ${locale}`;
     }
     return sql;
   }
@@ -398,21 +406,21 @@ export class Schema extends Securable implements Executable {
    * @returns A Securable that represents all sequences currently in this schema
    */
   public allSequences(): Securable {
-    return new Securable("ALL SEQUENCES IN", this.grantName);
+    return new Securable("ALL SEQUENCES IN SCHEMA", this.name);
   }
 
   /**
    * @returns A Securable that represents all tables currently in this schema
    */
   public allTables(): Securable {
-    return new Securable("ALL TABLES IN", this.grantName);
+    return new Securable("ALL TABLES IN SCHEMA", this.name);
   }
 
   /**
    * @returns A Securable that represents all routines currently in this schema
    */
   public allRoutines(): Securable {
-    return new Securable("ALL ROUTINES IN", this.grantName);
+    return new Securable("ALL ROUTINES IN SCHEMA", this.name);
   }
 
   /**
@@ -422,7 +430,9 @@ export class Schema extends Securable implements Executable {
    * @returns An executable statement
    */
   public changeOwner(to: Role): Executable {
-    return { toSql: () => `ALTER SCHEMA ${this.name} OWNER TO ${to.name}` };
+    const name = escapeIdentifier(this.name);
+    const owner = escapeIdentifier(to.name);
+    return { toSql: () => `ALTER SCHEMA ${name} OWNER TO ${owner}` };
   }
 
   /**
@@ -468,9 +478,9 @@ export class Schema extends Securable implements Executable {
   }
 
   public toSql(): string {
-    let sql = `CREATE SCHEMA IF NOT EXISTS ${this.name}`;
+    let sql = `CREATE SCHEMA IF NOT EXISTS ${escapeIdentifier(this.name)}`;
     if (this.#owner) {
-      sql += ` AUTHORIZATION ${this.#owner.name}`;
+      sql += ` AUTHORIZATION ${escapeIdentifier(this.#owner.name)}`;
     }
     return sql;
   }
