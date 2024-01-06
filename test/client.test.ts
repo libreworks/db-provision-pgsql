@@ -1,8 +1,8 @@
 import { jest } from "@jest/globals";
 // @ts-ignore
 import pg from "pg";
-import { ServerClient } from "../src/client.js";
-import { Catalog, Login, Grant } from "../src/model.js";
+import { ServerClient, DatabaseClient } from "../src/client.js";
+import { Catalog, Login, Grant, Role, Schema } from "../src/model.js";
 
 describe("client", () => {
   describe("ServerClient", () => {
@@ -145,7 +145,7 @@ describe("client", () => {
       });
     });
 
-    describe("#createLogin", () => {
+    describe("#createRole", () => {
       let login: Login;
 
       beforeEach(() => {
@@ -165,7 +165,7 @@ describe("client", () => {
         spy2.mockImplementation(() => {
           return {};
         });
-        await obj.createLogin(login);
+        await obj.createRole(login);
         expect(spy2).not.toHaveBeenCalled();
         spy.mockRestore();
         spy2.mockRestore();
@@ -179,7 +179,7 @@ describe("client", () => {
         spy2.mockImplementation(() => {
           return {};
         });
-        await obj.createLogin(login);
+        await obj.createRole(login);
         expect(spy2).toHaveBeenCalledTimes(1);
         expect(spy2).toHaveBeenCalledWith(login.toSql());
         spy.mockRestore();
@@ -216,6 +216,127 @@ describe("client", () => {
         await obj.createGrant(grant);
         expect(spy).toHaveBeenCalledTimes(1);
         expect(spy).toHaveBeenCalledWith(grant.toSql());
+        spy.mockRestore();
+      });
+    });
+  });
+
+  describe("DatabaseClient", () => {
+    let client: pg.Client;
+    let schema: Schema;
+
+    beforeEach(() => {
+      client = new pg.Client({ database: "postgres" });
+      const catalog = new Catalog("foobar");
+      const owner = new Login("superuser", "foobar");
+      schema = catalog.createSchema("username", owner);
+    });
+
+    afterEach(() => {
+      // @ts-ignore
+      client = undefined;
+      // @ts-ignore
+      schema = undefined;
+    });
+
+    describe("#createAdminGrants", () => {
+      let adminRole: Role;
+
+      beforeEach(() => {
+        adminRole = new Role("admins");
+      });
+
+      afterEach(() => {
+        // @ts-ignore
+        adminRole = undefined;
+      });
+
+      test("behaves as expected with no admins", async () => {
+        const obj = new DatabaseClient(client);
+        const spy = jest.spyOn(client, "query");
+        spy.mockImplementation(() => {
+          return {};
+        });
+        const admins: Login[] = [];
+        const results = await obj.createAdminGrants(schema, adminRole, admins);
+        expect(spy).not.toHaveBeenCalled();
+        expect(results).toStrictEqual([]);
+        spy.mockRestore();
+      });
+
+      test("behaves as expected", async () => {
+        const obj = new DatabaseClient(client);
+        const spy = jest.spyOn(client, "query");
+        spy.mockImplementation(() => {
+          return {};
+        });
+        const admins = [new Login("foo", "bar")];
+        const results = await obj.createAdminGrants(schema, adminRole, admins);
+        expect(spy).toHaveBeenCalledTimes(8);
+        expect(results.map((v) => v.toSql())).toStrictEqual([
+          'GRANT USAGE ON SCHEMA "username" TO "admins"',
+          'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "username" TO "admins"',
+          'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA "username" TO "admins"',
+          'GRANT ALL PRIVILEGES ON ALL ROUTINES IN SCHEMA "username" TO "admins"',
+          'ALTER DEFAULT PRIVILEGES FOR USER "superuser" IN SCHEMA "username" GRANT ALL PRIVILEGES ON TABLES TO "admins"',
+          'ALTER DEFAULT PRIVILEGES FOR USER "superuser" IN SCHEMA "username" GRANT ALL PRIVILEGES ON SEQUENCES TO "admins"',
+          'ALTER DEFAULT PRIVILEGES FOR USER "superuser" IN SCHEMA "username" GRANT ALL PRIVILEGES ON ROUTINES TO "admins"',
+          'GRANT "admins" TO "foo"',
+        ]);
+        spy.mockRestore();
+      });
+    });
+
+    describe("#createReaderGrants", () => {
+      let readerRole: Role;
+
+      beforeEach(() => {
+        readerRole = new Role("readers");
+      });
+
+      afterEach(() => {
+        // @ts-ignore
+        readerRole = undefined;
+      });
+
+      test("behaves as expected with no admins", async () => {
+        const obj = new DatabaseClient(client);
+        const spy = jest.spyOn(client, "query");
+        spy.mockImplementation(() => {
+          return {};
+        });
+        const logins: Login[] = [];
+        const results = await obj.createReaderGrants(
+          schema,
+          readerRole,
+          logins,
+        );
+        expect(spy).not.toHaveBeenCalled();
+        expect(results).toStrictEqual([]);
+        spy.mockRestore();
+      });
+
+      test("behaves as expected", async () => {
+        const obj = new DatabaseClient(client);
+        const spy = jest.spyOn(client, "query");
+        spy.mockImplementation(() => {
+          return {};
+        });
+        const logins = [new Login("foo", "bar")];
+        const results = await obj.createReaderGrants(
+          schema,
+          readerRole,
+          logins,
+        );
+        expect(spy).toHaveBeenCalledTimes(6);
+        expect(results.map((v) => v.toSql())).toStrictEqual([
+          'GRANT USAGE ON SCHEMA "username" TO "readers"',
+          'GRANT SELECT ON ALL TABLES IN SCHEMA "username" TO "readers"',
+          'GRANT SELECT ON ALL SEQUENCES IN SCHEMA "username" TO "readers"',
+          'ALTER DEFAULT PRIVILEGES FOR USER "superuser" IN SCHEMA "username" GRANT SELECT ON TABLES TO "readers"',
+          'ALTER DEFAULT PRIVILEGES FOR USER "superuser" IN SCHEMA "username" GRANT SELECT ON SEQUENCES TO "readers"',
+          'GRANT "readers" TO "foo"',
+        ]);
         spy.mockRestore();
       });
     });
