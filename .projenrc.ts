@@ -49,12 +49,12 @@ const project = new typescript.TypeScriptProject({
       moduleNameMapper: {
         "^(\\.{1,2}/.*)\\.js$": "$1",
       },
-      transform: {
-        "^.+\\.ts$": new javascript.Transform("ts-jest", {
-          useESM: true,
-          tsconfig: "tsconfig.dev.json",
-        }),
-      },
+    },
+  },
+  tsJestOptions: {
+    transformPattern: "^.+\\.ts$",
+    transformOptions: {
+      useESM: true,
     },
   },
 
