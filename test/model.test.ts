@@ -49,7 +49,13 @@ describe("model", () => {
       test("produces correct SQL", () => {
         const name = "my_role";
         const obj = new Role(name);
-        expect(obj.toSql()).toBe(`CREATE ROLE ${name}`);
+        expect(obj.toSql()).toBe(`CREATE ROLE "${name}"`);
+      });
+
+      test("produces correct SQL with double quotes", () => {
+        const name = 'Austin "Danger" Powers';
+        const obj = new Role(name);
+        expect(obj.toSql()).toBe(`CREATE ROLE "Austin ""Danger"" Powers"`);
       });
     });
   });
@@ -71,7 +77,7 @@ describe("model", () => {
         const entitlement = "FOOBAR";
         const obj = new Grant(grantee, entitlement);
         const sql = obj.toSql();
-        expect(sql).toBe(`GRANT ${entitlement} TO ${grantee.name}`);
+        expect(sql).toBe(`GRANT ${entitlement} TO "${grantee.name}"`);
       });
     });
   });
@@ -84,7 +90,7 @@ describe("model", () => {
         const obj = new Membership(group, member);
         expect(obj.grantee).toBe(member);
         expect(obj.group).toBe(group);
-        expect(obj.entitlement).toBe(group.name);
+        expect(obj.entitlement).toBe(`"${group.name}"`);
       });
     });
 
@@ -94,7 +100,7 @@ describe("model", () => {
         const member = new Role("bar");
         const obj = new Membership(group, member);
         const sql = obj.toSql();
-        expect(sql).toBe(`GRANT ${group.name} TO ${member.name}`);
+        expect(sql).toBe(`GRANT "${group.name}" TO "${member.name}"`);
       });
     });
   });
@@ -117,7 +123,19 @@ describe("model", () => {
         const password = "hunter2";
         const obj = new Login(username, password);
         const sql = obj.toSql();
-        expect(sql).toBe(`CREATE USER ${username} WITH PASSWORD '${password}'`);
+        expect(sql).toBe(
+          `CREATE USER "${username}" WITH PASSWORD '${password}'`,
+        );
+      });
+
+      test("produces correct SQL with apostrophes", () => {
+        const username = "foobar";
+        const password = "that's all folks";
+        const obj = new Login(username, password);
+        const sql = obj.toSql();
+        expect(sql).toBe(
+          `CREATE USER "${username}" WITH PASSWORD 'that''s all folks'`,
+        );
       });
     });
   });
@@ -126,7 +144,7 @@ describe("model", () => {
     describe("#constructor", () => {
       test("works as expected", () => {
         const grantee = new Role("foobar");
-        const target = "DATABASE whatever";
+        const target = 'DATABASE "whatever"';
         const privileges = ["CONNECT", "TEMP"];
         const obj = new Privileges(grantee, target, ...privileges);
         expect(obj.grantee).toBe(grantee);
@@ -138,12 +156,12 @@ describe("model", () => {
     describe("#toSql", () => {
       test("produces correct SQL", () => {
         const grantee = new Role("foobar");
-        const target = "DATABASE whatever";
+        const target = 'DATABASE "whatever"';
         const privileges = ["CONNECT", "TEMP"];
         const obj = new Privileges(grantee, target, ...privileges);
         const sql = obj.toSql();
         expect(sql).toBe(
-          `GRANT ${privileges.join(", ")} ON ${target} TO ${grantee.name}`,
+          `GRANT ${privileges.join(", ")} ON ${target} TO "${grantee.name}"`,
         );
       });
     });
@@ -155,7 +173,7 @@ describe("model", () => {
         const name = "foobar";
         const qualifier = "DATABASE";
         const obj = new Securable(qualifier, name);
-        expect(obj.grantName).toBe(`${qualifier} ${name}`);
+        expect(obj.grantName).toBe(`${qualifier} "${name}"`);
         expect(obj.name).toBe(name);
       });
     });
@@ -171,7 +189,7 @@ describe("model", () => {
         expect(actual).toBeInstanceOf(Privileges);
         expect(actual.grantee).toBe(grantee);
         expect(actual.privileges).toStrictEqual(privileges);
-        expect(actual.target).toBe(`${qualifier} ${name}`);
+        expect(actual.target).toBe(`${qualifier} "${name}"`);
       });
     });
   });
@@ -224,7 +242,7 @@ describe("model", () => {
         const name = "foobar";
         const obj = new Catalog(name);
         const sql = obj.toSql();
-        expect(sql).toBe(`CREATE DATABASE ${name} ENCODING 'UTF8'`);
+        expect(sql).toBe(`CREATE DATABASE "${name}" ENCODING 'UTF8'`);
       });
 
       test("produces correct SQL with all arguments", () => {
@@ -234,7 +252,7 @@ describe("model", () => {
         const obj = new Catalog(name, encoding, locale);
         const sql = obj.toSql();
         expect(sql).toBe(
-          `CREATE DATABASE ${name} ENCODING '${encoding}' LC_COLLATE '${locale}' LC_CTYPE '${locale}'`,
+          `CREATE DATABASE "${name}" ENCODING '${encoding}' LC_COLLATE '${locale}' LC_CTYPE '${locale}'`,
         );
       });
     });
@@ -270,7 +288,7 @@ describe("model", () => {
         const obj = new Schema(catalog, name);
         const actual = obj.changeOwner(owner);
         expect(actual.toSql()).toBe(
-          `ALTER SCHEMA ${name} OWNER TO ${owner.name}`,
+          `ALTER SCHEMA "${name}" OWNER TO "${owner.name}"`,
         );
       });
     });
@@ -373,7 +391,7 @@ describe("model", () => {
         const name = "my_user";
         const obj = new Schema(catalog, name);
         const sql = obj.toSql();
-        expect(sql).toBe(`CREATE SCHEMA IF NOT EXISTS ${name}`);
+        expect(sql).toBe(`CREATE SCHEMA IF NOT EXISTS "${name}"`);
       });
 
       test("produces correct SQL with all arguments", () => {
@@ -383,7 +401,7 @@ describe("model", () => {
         const obj = new Schema(catalog, name, owner);
         const sql = obj.toSql();
         expect(sql).toBe(
-          `CREATE SCHEMA IF NOT EXISTS ${name} AUTHORIZATION ${owner.name}`,
+          `CREATE SCHEMA IF NOT EXISTS "${name}" AUTHORIZATION "${owner.name}"`,
         );
       });
     });
@@ -447,7 +465,7 @@ describe("model", () => {
         const obj = new DefaultPrivileges(privileges);
         const sql = obj.toSql();
         expect(sql).toBe(
-          `ALTER DEFAULT PRIVILEGES GRANT SELECT, INSERT ON TABLES TO ${grantee.name}`,
+          `ALTER DEFAULT PRIVILEGES GRANT SELECT, INSERT ON TABLES TO "${grantee.name}"`,
         );
       });
 
@@ -461,7 +479,7 @@ describe("model", () => {
         const obj = new DefaultPrivileges(privileges, creator, schema);
         const sql = obj.toSql();
         expect(sql).toBe(
-          `ALTER DEFAULT PRIVILEGES FOR ROLE ${creator.name} IN ${schema.grantName} GRANT SELECT, INSERT ON TABLES TO ${grantee.name}`,
+          `ALTER DEFAULT PRIVILEGES FOR ROLE "${creator.name}" IN ${schema.grantName} GRANT SELECT, INSERT ON TABLES TO "${grantee.name}"`,
         );
       });
 
@@ -475,7 +493,7 @@ describe("model", () => {
         const obj = new DefaultPrivileges(privileges, creator, schema2);
         const sql = obj.toSql();
         expect(sql).toBe(
-          `ALTER DEFAULT PRIVILEGES FOR USER ${creator.name} IN ${schema2.grantName} GRANT SELECT, INSERT ON TABLES TO ${grantee.name}`,
+          `ALTER DEFAULT PRIVILEGES FOR USER "${creator.name}" IN ${schema2.grantName} GRANT SELECT, INSERT ON TABLES TO "${grantee.name}"`,
         );
       });
     });
