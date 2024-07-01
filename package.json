@@ -51,8 +51,8 @@
     "standard-version": "^9",
     "ts-jest": "^29.1.5",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.26.1",
-    "typescript": "^5.4.5"
+    "typedoc": "^0.26.3",
+    "typescript": "^5.5.2"
   },
   "dependencies": {
     "pg": "^8.12.0"
