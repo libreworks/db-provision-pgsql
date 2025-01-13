@@ -89,7 +89,7 @@
       "description": "Synthesize project files",
       "steps": [
         {
-          "exec": "ts-node-esm --project tsconfig.dev.json .projenrc.ts"
+          "exec": "tsx --tsconfig tsconfig.dev.json .projenrc.ts"
         }
       ]
     },
@@ -250,13 +250,13 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@jest/globals,@types/jest,@types/pg,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,prettier,projen,ts-jest,ts-node,typedoc,typescript,pg"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev,peer,prod,optional --filter=@jest/globals,@types/jest,@types/pg,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,prettier,projen,ts-jest,ts-node,tsx,typedoc,typescript,pg"
         },
         {
           "exec": "yarn install --check-files"
         },
         {
-          "exec": "yarn upgrade @jest/globals @types/jest @types/node @types/pg @typescript-eslint/eslint-plugin @typescript-eslint/parser commit-and-tag-version constructs eslint-config-prettier eslint-import-resolver-typescript eslint-plugin-import eslint-plugin-prettier eslint jest jest-junit prettier projen ts-jest ts-node typedoc typescript pg"
+          "exec": "yarn upgrade @jest/globals @types/jest @types/node @types/pg @typescript-eslint/eslint-plugin @typescript-eslint/parser commit-and-tag-version constructs eslint-config-prettier eslint-import-resolver-typescript eslint-plugin-import eslint-plugin-prettier eslint jest jest-junit prettier projen ts-jest ts-node tsx typedoc typescript pg"
         },
         {
           "exec": "npx projen"

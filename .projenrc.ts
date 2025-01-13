@@ -25,7 +25,7 @@ const project = new typescript.TypeScriptProject({
   bugsUrl: `${projectUrl}/issues`,
 
   deps: ["pg"],
-  devDeps: ["@jest/globals", "@types/pg"],
+  devDeps: ["@jest/globals", "@types/pg", "tsx"],
 
   minNodeVersion: "18.0.0",
   workflowNodeVersion: "22",
@@ -88,6 +88,8 @@ project.package.file.addOverride("type", "module");
 project.package.file.addOverride("private", false);
 project.testTask.env("NODE_OPTIONS", "--experimental-vm-modules");
 const [{ exec: projenrcCommand = "" }] = project.defaultTask!.steps;
-project.defaultTask!.reset(projenrcCommand.replace("ts-node", "ts-node-esm"));
+project.defaultTask!.reset(
+  projenrcCommand.replace("ts-node", "tsx").replace("--project", "--tsconfig"),
+);
 
 project.synth();
