@@ -28,7 +28,7 @@ const project = new typescript.TypeScriptProject({
   devDeps: ["@jest/globals", "@types/pg"],
 
   minNodeVersion: "18.0.0",
-  workflowNodeVersion: "18.18.2",
+  workflowNodeVersion: "22",
   tsconfig: {
     compilerOptions: {
       moduleResolution: javascript.TypeScriptModuleResolution.NODE16,
