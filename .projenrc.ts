@@ -79,6 +79,7 @@ const project = new typescript.TypeScriptProject({
 
   releasableCommits: ReleasableCommits.featuresAndFixes(),
   releaseToNpm: true,
+  npmTrustedPublishing: true,
   packageName: "@libreworks/db-provision-pgsql",
   npmAccess: javascript.NpmAccess.PUBLIC,
   npmignore: ["docs"],
