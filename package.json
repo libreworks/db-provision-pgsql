@@ -51,7 +51,6 @@
     "prettier": "^3.9.10",
     "projen": "^0.104.25",
     "ts-jest": "^29.4.15",
-    "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
     "typedoc": "^0.28.20",
     "typescript": "^5.9.3"
@@ -69,6 +68,13 @@
   ],
   "engines": {
     "node": ">= 18.0.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "yarn",
+      "version": "1.22.22",
+      "onFail": "ignore"
+    }
   },
   "main": "lib/index.js",
   "license": "MIT",

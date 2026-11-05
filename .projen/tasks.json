@@ -127,7 +127,26 @@
     },
     "default": {
       "name": "default",
-      "description": "Synthesize project files"
+      "description": "Synthesize project files",
+      "steps": [
+        {
+          "execArgs": [
+            "tsc",
+            "--noEmit",
+            "-p",
+            "projenrc/tsconfig.json"
+          ],
+          "name": "typecheck"
+        },
+        {
+          "execArgs": [
+            "tsx",
+            "--tsconfig",
+            "projenrc/tsconfig.json",
+            ".projenrc.ts"
+          ]
+        }
+      ]
     },
     "docgen": {
       "name": "docgen",
@@ -333,7 +352,7 @@
             "--peer",
             "--no-deprecated",
             "--dep=dev,prod,peer,optional",
-            "--filter=@jest/globals,@types/jest,@types/pg,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,prettier,projen,ts-jest,ts-node,tsx,typedoc,typescript,pg"
+            "--filter=@jest/globals,@types/jest,@types/pg,eslint-config-prettier,eslint-import-resolver-typescript,eslint-plugin-import,eslint-plugin-prettier,jest,prettier,projen,ts-jest,tsx,typedoc,typescript,pg"
           ]
         },
         {
@@ -361,7 +380,6 @@
             "prettier",
             "projen",
             "ts-jest",
-            "ts-node",
             "tsx",
             "typedoc",
             "typescript",

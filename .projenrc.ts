@@ -25,10 +25,10 @@ const project = new typescript.TypeScriptProject({
   bugsUrl: `${projectUrl}/issues`,
 
   deps: ["pg"],
-  devDeps: ["@jest/globals", "@types/pg", "tsx"],
+  devDeps: ["@jest/globals", "@types/pg"],
 
   minNodeVersion: "18.0.0",
-  workflowNodeVersion: "22",
+  workflowNodeVersion: "24",
   tsconfig: {
     compilerOptions: {
       moduleResolution: javascript.TypeScriptModuleResolution.NODE16,
@@ -43,6 +43,8 @@ const project = new typescript.TypeScriptProject({
   codeCov: true,
   docgen: true,
 
+  packageManager: javascript.NodePackageManager.YARN_CLASSIC,
+  runner: typescript.TypeScriptRunner.tsx(),
   jestOptions: {
     jestConfig: {
       extensionsToTreatAsEsm: [".ts"],
@@ -82,15 +84,11 @@ const project = new typescript.TypeScriptProject({
   npmTrustedPublishing: true,
   packageName: "@libreworks/db-provision-pgsql",
   npmAccess: javascript.NpmAccess.PUBLIC,
-  npmignore: ["docs"],
 });
 
-project.package.file.addOverride("type", "module");
-project.package.file.addOverride("private", false);
+project.npmignore?.exclude("docs");
+
+project.addFields({ type: "module", private: false });
 project.testTask.env("NODE_OPTIONS", "--experimental-vm-modules");
-const [{ exec: projenrcCommand = "" }] = project.defaultTask!.steps;
-project.defaultTask!.reset(
-  projenrcCommand.replace("ts-node", "tsx").replace("--project", "--tsconfig"),
-);
 
 project.synth();
