@@ -27,10 +27,17 @@
     "strictPropertyInitialization": true,
     "stripInternal": true,
     "target": "es2022",
+    "types": [
+      "jest",
+      "node",
+      "pg"
+    ],
     "moduleResolution": "node16"
   },
   "include": [
     "src/**/*.ts"
   ],
-  "exclude": []
+  "exclude": [
+    "node_modules"
+  ]
 }
