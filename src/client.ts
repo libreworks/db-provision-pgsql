@@ -94,6 +94,25 @@ export class ServerClient {
   public async createGrant(grant: Grant) {
     await this.#client.query(grant.toSql());
   }
+
+  /**
+   * Grants membership in a role to each of the given roles.
+   *
+   * Role memberships apply to the entire server, not to a single database. The
+   * connected user must have `ADMIN OPTION` on the role, such as the
+   * `CREATEROLE` user that created it.
+   *
+   * @param role - The role in which membership is granted
+   * @param members - The roles to receive membership
+   * @returns A Promise that resolves to the new memberships
+   */
+  public async createMemberships(role: Role, members: Role[]) {
+    const memberships = members.map((member) => role.assignTo(member));
+    for (const membership of memberships) {
+      await this.createGrant(membership);
+    }
+    return memberships;
+  }
 }
 
 /**
@@ -112,22 +131,17 @@ export class DatabaseClient {
   }
 
   /**
-   * Configures roles and privileges for admin usage of a schema.
+   * Configures privileges for admin usage of a schema.
+   *
+   * The connected user must be the schema owner. This method doesn't grant
+   * membership in the admin role; use {@link ServerClient.createMemberships}
+   * for that.
    *
    * @param schema - The schema where the permissions apply
    * @param adminRole - The role to which permission should be granted
-   * @param admins - The roles to receive membership in the admin role
    * @returns A Promise that resolves to the new grants and default privileges
    */
-  public async createAdminGrants(
-    schema: Schema,
-    adminRole: Role,
-    admins: Role[],
-  ) {
-    if (admins.length === 0) {
-      return [];
-    }
-
+  public async createAdminGrants(schema: Schema, adminRole: Role) {
     let defaults: DefaultPrivileges[] = [
       schema.setDefaultTablePrivileges(adminRole, "ALL PRIVILEGES"),
       schema.setDefaultSequencePrivileges(adminRole, "ALL PRIVILEGES"),
@@ -143,7 +157,6 @@ export class DatabaseClient {
       schema.allSequences().grant(adminRole, "ALL PRIVILEGES"),
       schema.allRoutines().grant(adminRole, "ALL PRIVILEGES"),
       ...defaults,
-      ...admins.map((login) => adminRole.assignTo(login)),
     ];
 
     for (const statement of statements) {
@@ -154,22 +167,17 @@ export class DatabaseClient {
   }
 
   /**
-   * Configures roles and privileges for read-only usage of a schema.
+   * Configures privileges for read-only usage of a schema.
+   *
+   * The connected user must be the schema owner. This method doesn't grant
+   * membership in the reader role; use {@link ServerClient.createMemberships}
+   * for that.
    *
    * @param schema - The schema where the permissions apply
    * @param readerRole - The role to which permission should be granted
-   * @param readers - The roles to receive membership in the reader role
    * @returns A Promise that resolves to the new grants and default privileges
    */
-  public async createReaderGrants(
-    schema: Schema,
-    readerRole: Role,
-    readers: Role[],
-  ) {
-    if (readers.length === 0) {
-      return [];
-    }
-
+  public async createReaderGrants(schema: Schema, readerRole: Role) {
     let defaults: DefaultPrivileges[] = [
       schema.setDefaultTablePrivileges(readerRole, "SELECT"),
       schema.setDefaultSequencePrivileges(readerRole, "SELECT"),
@@ -183,7 +191,6 @@ export class DatabaseClient {
       schema.allTables().grant(readerRole, "SELECT"),
       schema.allSequences().grant(readerRole, "SELECT"),
       ...defaults,
-      ...readers.map((login) => readerRole.assignTo(login)),
     ];
 
     for (const statement of statements) {

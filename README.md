@@ -2,7 +2,7 @@
 
 [![MIT](https://img.shields.io/github/license/libreworks/db-provision-pgsql)](https://github.com/libreworks/db-provision-pgsql/blob/main/LICENSE)
 [![npm](https://img.shields.io/npm/v/@libreworks/db-provision-pgsql)](https://www.npmjs.com/package/@libreworks/db-provision-pgsql)
-[![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/libreworks/db-provision-pgsql/release/main?label=release)](https://github.com/libreworks/db-provision-pgsql/actions/workflows/release.yml)
+[![GitHub Workflow Status (branch)](https://img.shields.io/github/actions/workflow/status/libreworks/db-provision-pgsql/release.yml?label=release)](https://github.com/libreworks/db-provision-pgsql/actions/workflows/release.yml)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/libreworks/db-provision-pgsql?sort=semver)](https://github.com/libreworks/db-provision-pgsql/releases)
 [![codecov](https://codecov.io/gh/libreworks/db-provision-pgsql/branch/main/graph/badge.svg?token=OHTRGNTSPO)](https://codecov.io/gh/libreworks/db-provision-pgsql)
 
@@ -82,3 +82,24 @@ ALTER DEFAULT PRIVILEGES FOR USER "example_user" IN SCHEMA "example_user" GRANT 
 ```
 
 Because all identifiers are quoted, that means the objects will be created using the same character casing as provided. Without double quotes, PostgreSQL creates objects with lowercase identifiers.
+
+### Executing statements
+
+`ServerClient` and `DatabaseClient` run these statements against a server. They don't require a superuser, which makes them suitable for managed services like Amazon RDS. Each runs as a different user:
+
+- `ServerClient` connects to the `postgres` database as a user with `CREATEROLE` (and `CREATEDB`, to create databases). It creates logins, roles, and databases, and grants role memberships.
+- `DatabaseClient` connects to the new database as the schema owner. It grants privileges on the schema.
+
+```typescript
+import { DatabaseClient, ServerClient } from "@libreworks/db-provision-pgsql";
+
+// As the CREATEROLE user, connected to the "postgres" database.
+const server = new ServerClient(adminConnection);
+await server.createMemberships(admin, [adminLogin]);
+await server.createMemberships(readers, [readerLogin]);
+
+// As the schema owner, connected to the new database.
+const database = new DatabaseClient(ownerConnection);
+await database.createAdminGrants(schema, admin);
+await database.createReaderGrants(schema, readers);
+```
